@@ -530,54 +530,39 @@
     head.castShadow = true;
     g.add(head);
 
-    // subtle shine, just a hint of the forehead catching light - not a
-    // full bald dome, since the head is meant to read as thinning-haired
-    // rather than fully bald.
-    const shine = new THREE.Mesh(
-      new THREE.SphereGeometry(0.055, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 })
-    );
-    shine.position.set(0.08, 1.92, 0.24);
-    shine.userData.noOutline = true;
-    g.add(shine);
-
-    // Thin ("ralo") hair covering most of the head - a light sparse layer
-    // over the crown/top plus a fuller horseshoe band on the sides/back,
-    // like Dario's partial hairCap technique in Hero Vortex but built from
-    // overlapping tufts instead of one solid dome. Only a small patch of
-    // forehead stays bare, not the whole scalp.
-    const hairMat = toonMat(0x5a5048);
+    // Full head of hair - a solid cap covering the whole top, sides and
+    // back of the head (only the face stays bare), same partial-sphere
+    // technique as Dario's hairCap in Hero Vortex, sized generously so
+    // the character reads as a full-haired professor, not bald/thinning.
+    const hairMat = toonMat(0x5a4636);
     const hairTuftsGroup = new THREE.Group();
     hairTuftsGroup.position.copy(head.position);
     g.add(hairTuftsGroup);
 
-    // Fuller band on the sides/back/crown
-    [
-      { r: 0.34, yBase: 0.03, scale: 1.15 },
-      { r: 0.33, yBase: -0.06, scale: 1.05 },
-      { r: 0.31, yBase: -0.14, scale: 0.9 }
-    ].forEach(({ r, yBase, scale }) => {
-      for (let deg = 40; deg <= 320; deg += 12) {
-        const theta = (deg * Math.PI) / 180;
-        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.065 * scale, 6, 5), hairMat);
-        tuft.position.set(
-          Math.sin(theta) * r,
-          yBase + Math.sin(deg * 3) * 0.015,
-          Math.cos(theta) * r
-        );
-        tuft.scale.set(1, 0.6, 0.75);
-        hairTuftsGroup.add(tuft);
-      }
+    const hairCap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.355, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.62),
+      hairMat
+    );
+    hairCap.rotation.x = -0.15;
+    hairCap.position.set(0, 0.03, -0.02);
+    hairTuftsGroup.add(hairCap);
+
+    // Sideburns/lower fringe extending a bit further down over the ears
+    [-1, 1].forEach((side) => {
+      const sideburn = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), hairMat);
+      sideburn.position.set(side * 0.3, -0.08, 0.14);
+      sideburn.scale.set(0.6, 1, 0.7);
+      hairTuftsGroup.add(sideburn);
     });
 
-    // Sparse thin wisps combed over the top of the head, leaving only a
-    // small bare patch at the very front hairline.
-    for (let deg = -55; deg <= 55; deg += 11) {
+    // A few textured tufts on top so the cap doesn't read as a perfectly
+    // smooth helmet, plus a side part for a bit of styling.
+    for (let deg = -70; deg <= 70; deg += 14) {
       const theta = (deg * Math.PI) / 180;
-      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.045, 5, 4), hairMat);
-      wisp.position.set(Math.sin(theta) * 0.3, 0.24, Math.cos(theta) * 0.14 - 0.05);
-      wisp.scale.set(1, 0.35, 1);
-      hairTuftsGroup.add(wisp);
+      const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 5), hairMat);
+      tuft.position.set(Math.sin(theta) * 0.28, 0.24, Math.cos(theta) * 0.14 - 0.03);
+      tuft.scale.set(1, 0.55, 0.9);
+      hairTuftsGroup.add(tuft);
     }
 
     // Glasses
