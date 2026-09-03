@@ -96,8 +96,8 @@
   }
   #btn-restart{background:var(--sun);}
 
-  #gameover-box{display:none;}
-  #startscreen{display:flex;flex-direction:column;align-items:center;}
+  #gameover-box{display:none;flex-direction:column;align-items:center;max-height:88vh;overflow-y:auto;pointer-events:auto;}
+  #startscreen{display:flex;flex-direction:column;align-items:center;max-height:88vh;overflow-y:auto;pointer-events:auto;}
 
   #touch-controls{
     position:fixed;bottom:0;left:0;width:100%;height:38%;
@@ -140,7 +140,7 @@
     <h1>O CORREDOR DO PROFESSOR</h1>
     <p>Ele só quer chegar ao fim do corredor.</p>
     <p>Desvie de dezenas de alunos grudados no celular.</p>
-    <p>Arraste ou use as setas / A-D para trocar de fileira. Toque/clique/espaço para pular.</p>
+    <p>Arraste ou use as setas / A-D para trocar de fileira. Toque/clique/espaço para pular. Puxe pra baixo (↓/S) pra descer mais rápido.</p>
     <button class="glowbtn" id="btn-start">COMEÇAR AULA</button>
   </div>
   <div id="gameover-box">
@@ -155,7 +155,7 @@
   <div id="touch-left"></div>
   <div id="touch-right"></div>
 </div>
-<div id="joy-hint">deslize ← → para trocar de fileira · toque para pular</div>
+<div id="joy-hint">deslize ← → para trocar de fileira · toque/↑ para pular · ↓ para descer mais rápido</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="game.js"></script>

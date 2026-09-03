@@ -999,6 +999,15 @@
     velY = JUMP_VELOCITY;
   }
 
+  // Pulling down mid-air slams the professor down faster instead of
+  // floating through the rest of the jump arc - lets the player commit to
+  // landing sooner to dodge the next row.
+  const FAST_FALL_VELOCITY = -22;
+  function fastFall() {
+    if (!running || !isJumping) return;
+    velY = Math.min(velY, FAST_FALL_VELOCITY);
+  }
+
   window.addEventListener("keydown", (e) => {
     if (e.repeat) return;
     switch (e.code) {
@@ -1014,6 +1023,10 @@
       case "KeyW":
       case "Space":
         doJump();
+        break;
+      case "ArrowDown":
+      case "KeyS":
+        fastFall();
         break;
       case "Enter":
         if (!running) {
@@ -1053,6 +1066,8 @@
         changeLane(dx > 0 ? 1 : -1);
       } else if (dy < -40 && Math.abs(dy) > Math.abs(dx)) {
         doJump();
+      } else if (dy > 40 && Math.abs(dy) > Math.abs(dx)) {
+        fastFall();
       } else if (dt < 250 && Math.abs(dx) < 20 && Math.abs(dy) < 20) {
         doJump();
       }
