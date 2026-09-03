@@ -200,8 +200,8 @@
   }
 
   const floorTexture = makeTileTexture({
-    base: "#fff3d6",
-    grout: "#f0c76b",
+    base: "#f0d9a3",
+    grout: "#d4a94f",
     cols: 9,
     rows: 220,
     dirty: false
@@ -209,8 +209,8 @@
   floorTexture.repeat.set(1, 22);
 
   const ceilTexture = makeTileTexture({
-    base: "#fffaf0",
-    grout: "#ffe1a8",
+    base: "#f2ead8",
+    grout: "#e0c078",
     cols: 9,
     rows: 220
   });
@@ -237,10 +237,10 @@
 
   // Lights - bright, warm, sunny cartoon-school lighting instead of a flat
   // institutional glare.
-  const hemi = new THREE.HemisphereLight(0xfff6d9, 0x8fc8e8, 1.0);
+  const hemi = new THREE.HemisphereLight(0xfff6d9, 0x8fc8e8, 0.55);
   scene.add(hemi);
 
-  const key = new THREE.DirectionalLight(0xfff2c4, 1.3);
+  const key = new THREE.DirectionalLight(0xffe9b8, 0.75);
   key.position.set(6, 14, 6);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -250,7 +250,7 @@
   key.shadow.camera.bottom = -20;
   scene.add(key);
 
-  const rim = new THREE.PointLight(0x7fd4ff, 0.8, 40);
+  const rim = new THREE.PointLight(0x7fd4ff, 0.45, 40);
   rim.position.set(0, 6, -10);
   scene.add(rim);
 
@@ -261,7 +261,7 @@
   const corridorGroup = new THREE.Group();
   scene.add(corridorGroup);
 
-  const floorMat = toonMat(0xfff3d6, { map: floorTexture });
+  const floorMat = toonMat(0xf0d9a3, { map: floorTexture });
   const floorGeo = new THREE.PlaneGeometry(9, 200);
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.rotation.x = -Math.PI / 2;
@@ -270,7 +270,7 @@
   corridorGroup.add(floor);
 
   // Low step/riser along the left side of the walkway
-  const riserMat = toonMat(0xffe4a3);
+  const riserMat = toonMat(0xe8c46e);
   const riser = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 200), riserMat);
   riser.position.set(-3.3, 0.07, -80);
   riser.receiveShadow = true;
@@ -308,7 +308,7 @@
   for (let z = -14; z > SPAWN_Z * 2; z -= 11) spawnOutlet(z);
 
   // Left wall: sunny butter-yellow wall with sky-blue window panels
-  const wallMat = toonMat(0xffe9ae);
+  const wallMat = toonMat(0xf5d78a);
   function makeWall(x, rotY) {
     const geo = new THREE.PlaneGeometry(200, 10);
     const wall = new THREE.Mesh(geo, wallMat);
@@ -321,7 +321,7 @@
 
   // Window panels on the left wall (bright sunny sky-blue glass)
   const windowMat = toonMat(0x8fd8ff, { emissive: 0xbfeaff, emissiveIntensity: 0.5 });
-  const windowFrameMat = toonMat(0xffffff);
+  const windowFrameMat = toonMat(0xf0ead8);
   const windowGroup = new THREE.Group();
   scene.add(windowGroup);
   function spawnWindow(z, small) {
@@ -342,7 +342,7 @@
   // Colorful classroom doors set into the left wall, framed brightly
   // (a saturated door slab that varies per door + white frame + nameplate).
   const doorColors = [0xff6f59, 0x3ecf8e, 0xffb238, 0x3ea6ff, 0xb26fe0];
-  const doorFrameMat = toonMat(0xffffff);
+  const doorFrameMat = toonMat(0xf0ead8);
   const doorHandleMat = toonMat(0xffe082);
   const doorPlateMat = toonMat(0xfff6e6);
   const doorGroup = new THREE.Group();
@@ -444,7 +444,7 @@
   }
   const courtyardTexture = makeCourtyardTexture();
   const courtyardMat = new THREE.MeshBasicMaterial({ map: courtyardTexture });
-  const courtyardFrameMat = toonMat(0xffffff);
+  const courtyardFrameMat = toonMat(0xf0ead8);
   const courtyardGroup = new THREE.Group();
   scene.add(courtyardGroup);
   // Sits on the right (marble) wall, in front of it like a balcony opening
@@ -493,7 +493,7 @@
 
   // Ceiling: white ceramic tile grid with a recessed duct band (matches photo)
   const ceilGeo = new THREE.PlaneGeometry(9, 200);
-  const ceilMat = toonMat(0xf6f5f1, { map: ceilTexture });
+  const ceilMat = toonMat(0xf2ead8, { map: ceilTexture });
   const ceiling = new THREE.Mesh(ceilGeo, ceilMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, 9.5, -80);
