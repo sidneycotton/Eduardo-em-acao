@@ -381,6 +381,23 @@
     shine.position.set(0.08, 1.9, 0.2);
     g.add(shine);
 
+    // Thin, receding hair (horseshoe pattern of sparse tufts around the
+    // sides/back only) - top and front stay bald, like Dario's partial
+    // hairCap technique in Hero Vortex but broken into a few thin tufts
+    // instead of one solid dome, so it reads as "ralo" rather than a helmet.
+    const hairMat = toonMat(0x5a5048);
+    const hairTuftsGroup = new THREE.Group();
+    hairTuftsGroup.position.copy(head.position);
+    g.add(hairTuftsGroup);
+    for (let deg = 78; deg <= 282; deg += 17) {
+      const theta = (deg * Math.PI) / 180;
+      const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), hairMat);
+      const r = 0.335;
+      tuft.position.set(Math.sin(theta) * r, -0.03 + Math.sin(deg * 3) * 0.015, Math.cos(theta) * r);
+      tuft.scale.set(1, 0.55, 0.7);
+      hairTuftsGroup.add(tuft);
+    }
+
     // Glasses
     const glassMat = toonMat(0x111111);
     const lensGeo = new THREE.TorusGeometry(0.08, 0.02, 8, 16);
@@ -442,6 +459,11 @@
 
   const professor = buildProfessor();
   professor.position.set(LANE_X[1], GROUND_Y, 2.6);
+  // The rig is modeled facing local +z (glasses/torso front); the world
+  // scrolls toward the camera to simulate the professor running toward -z,
+  // so the whole body is turned 180° here to actually face forward (away
+  // from the camera) instead of walking backwards staring at the player.
+  professor.rotation.y = Math.PI;
   scene.add(professor);
 
   // ---------- Student obstacle (stylized, looking at phone) ----------
