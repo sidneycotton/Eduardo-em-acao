@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Corredor do Professor</title>
+<style>
+  :root{
+    --neon1:#3ea6ff;
+    --neon2:#00e5ff;
+    --bg:#05070f;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;width:100%;height:100%;
+    background:var(--bg);
+    overflow:hidden;
+    font-family:'Segoe UI',Arial,sans-serif;
+    -webkit-user-select:none;user-select:none;
+    touch-action:none;
+  }
+  #canvas-wrap{position:fixed;inset:0;}
+  canvas{display:block;width:100%;height:100%;}
+
+  #hud{
+    position:fixed;top:0;left:0;width:100%;
+    display:flex;justify-content:space-between;align-items:flex-start;
+    padding:16px 20px;pointer-events:none;
+    z-index:10;
+  }
+  .hud-box{
+    background:rgba(6,10,24,0.55);
+    border:1px solid rgba(62,166,255,0.4);
+    border-radius:12px;
+    padding:8px 16px;
+    color:#eaf6ff;
+    text-shadow:0 0 8px rgba(62,166,255,0.6);
+    backdrop-filter:blur(4px);
+  }
+  #score{font-size:22px;font-weight:700;letter-spacing:1px;}
+  #best{font-size:13px;opacity:0.8;margin-top:2px;}
+  #speed{font-size:13px;opacity:0.8;}
+
+  #center-msg{
+    position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);
+    text-align:center;color:#eaf6ff;z-index:20;
+    text-shadow:0 0 16px rgba(0,229,255,0.8);
+    pointer-events:none;
+  }
+  #center-msg h1{
+    font-size:clamp(28px,6vw,54px);
+    margin:0 0 8px 0;
+    background:linear-gradient(90deg,var(--neon1),var(--neon2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 12px rgba(62,166,255,0.7));
+  }
+  #center-msg p{margin:4px 0;font-size:clamp(13px,2.6vw,18px);opacity:0.9;}
+  .glowbtn{
+    pointer-events:auto;
+    margin-top:18px;
+    padding:12px 28px;
+    font-size:17px;font-weight:700;
+    color:#04121f;
+    background:linear-gradient(90deg,var(--neon2),var(--neon1));
+    border:none;border-radius:30px;
+    cursor:pointer;
+    box-shadow:0 0 20px rgba(0,229,255,0.7), 0 0 60px rgba(62,166,255,0.3);
+    transition:transform .15s ease;
+  }
+  .glowbtn:active{transform:scale(0.95);}
+
+  #gameover-box{display:none;}
+  #startscreen{display:flex;flex-direction:column;align-items:center;}
+
+  #touch-controls{
+    position:fixed;bottom:0;left:0;width:100%;height:38%;
+    display:flex;z-index:15;
+  }
+  #touch-controls div{flex:1;}
+
+  #joy-hint{
+    position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    color:rgba(234,246,255,0.55);font-size:12px;z-index:10;pointer-events:none;
+    text-align:center;
+  }
+
+  #flash{
+    position:fixed;inset:0;background:radial-gradient(circle,rgba(255,0,60,0.55),rgba(255,0,60,0) 70%);
+    opacity:0;pointer-events:none;z-index:5;transition:opacity .25s ease;
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+<div id="flash"></div>
+
+<div id="hud">
+  <div class="hud-box">
+    <div id="score">0 m</div>
+    <div id="best">Recorde: 0 m</div>
+  </div>
+  <div class="hud-box">
+    <div id="speed">Velocidade: 1.0x</div>
+  </div>
+</div>
+
+<div id="center-msg">
+  <div id="startscreen">
+    <h1>O CORREDOR DO PROFESSOR</h1>
+    <p>Ele só quer chegar ao fim do corredor.</p>
+    <p>Desvie de dezenas de alunos grudados no celular.</p>
+    <p>Arraste ou use as setas / A-D para trocar de fileira. Toque/clique/espaço para pular.</p>
+    <button class="glowbtn" id="btn-start">COMEÇAR AULA</button>
+  </div>
+  <div id="gameover-box">
+    <h1 id="go-title">FIM DE EXPEDIENTE</h1>
+    <p id="go-score">Você percorreu 0 metros.</p>
+    <p id="go-msg">"Às vezes a vida é exatamente isso." — Prof.</p>
+    <button class="glowbtn" id="btn-restart">TOCAR O SINAL DE NOVO</button>
+  </div>
+</div>
+
+<div id="touch-controls">
+  <div id="touch-left"></div>
+  <div id="touch-right"></div>
+</div>
+<div id="joy-hint">deslize ← → para trocar de fileira · toque para pular</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
