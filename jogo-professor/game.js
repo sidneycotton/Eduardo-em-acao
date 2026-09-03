@@ -432,37 +432,47 @@
   const courtyardFrameMat = toonMat(0xe9e6dc);
   const courtyardGroup = new THREE.Group();
   scene.add(courtyardGroup);
+  // Sits on the right (marble) wall, in front of it like a balcony opening
+  // with a granite sill - matching the reference photos where the big
+  // outside view is on the right side of the corridor, not the left.
   function spawnCourtyardWindow(z) {
     const w = 2.6;
-    const h = 3.6;
+    const h = 3.2;
     const frame = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.2, h + 0.2), courtyardFrameMat);
-    frame.position.set(-4.57, GROUND_Y + h / 2 + 0.4, z);
-    frame.rotation.y = Math.PI / 2;
+    frame.position.set(4.57, GROUND_Y + h / 2 + 0.6, z);
+    frame.rotation.y = -Math.PI / 2;
     courtyardGroup.add(frame);
     const view = new THREE.Mesh(new THREE.PlaneGeometry(w, h), courtyardMat);
-    view.position.set(-4.55, GROUND_Y + h / 2 + 0.4, z);
-    view.rotation.y = Math.PI / 2;
+    view.position.set(4.55, GROUND_Y + h / 2 + 0.6, z);
+    view.rotation.y = -Math.PI / 2;
     courtyardGroup.add(view);
+    // granite sill/railing along the bottom of the opening
+    const sill = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, w), marbleWallMat);
+    sill.position.set(4.5, GROUND_Y + 0.45, z);
+    courtyardGroup.add(sill);
   }
 
-  // Lay out the left wall as an alternating rhythm: door, small window,
-  // door, big "janelão" every so often - matching the photographed hallway.
+  // Lay out the left wall as an alternating rhythm of doors and small
+  // windows, and the right (marble) wall with occasional big "janelões" -
+  // matching the photographed hallway.
   {
     let z = -8;
     let stepIndex = 0;
     while (z > SPAWN_Z * 2) {
-      const bigWindowTurn = stepIndex % 5 === 4;
-      if (bigWindowTurn) {
-        spawnCourtyardWindow(z);
-        z -= 5.5;
-      } else if (stepIndex % 2 === 0) {
+      if (stepIndex % 2 === 0) {
         spawnDoor(z);
-        z -= 4.2;
       } else {
         spawnWindow(z, Math.random() < 0.4);
-        z -= 4.2;
       }
+      z -= 4.2;
       stepIndex++;
+    }
+  }
+  {
+    let z = -14;
+    while (z > SPAWN_Z * 2) {
+      spawnCourtyardWindow(z);
+      z -= 15;
     }
   }
 
