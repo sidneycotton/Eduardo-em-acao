@@ -321,14 +321,16 @@
   const windowGroup = new THREE.Group();
   scene.add(windowGroup);
   function spawnWindow(z, small) {
-    const w = small ? 0.5 : 0.9;
-    const h = small ? 0.9 : 1.7;
+    // Wide, low horizontal panes (like the photo) instead of tall
+    // vertical ones - width along the corridor (z), short in height.
+    const w = small ? 0.9 : 1.6;
+    const h = small ? 0.5 : 0.85;
     const frame = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.08, h + 0.08), windowFrameMat);
-    frame.position.set(-4.56, small ? 6.6 : 5.3, z);
+    frame.position.set(-4.56, small ? 6.6 : 5.6, z);
     frame.rotation.y = Math.PI / 2;
     windowGroup.add(frame);
     const win = new THREE.Mesh(new THREE.PlaneGeometry(w, h), windowMat);
-    win.position.set(-4.54, small ? 6.6 : 5.3, z);
+    win.position.set(-4.54, small ? 6.6 : 5.6, z);
     win.rotation.y = Math.PI / 2;
     windowGroup.add(win);
   }
@@ -846,10 +848,14 @@
   const coins = []; // {mesh, lane} -- small dragons, kept name for internal simplicity
 
   function spawnObstacleRow() {
-    // choose how many lanes blocked (never all 3, to keep it winnable)
-    const blockCount = Math.random() < 0.7 ? 1 : 2;
+    // Choose how many lanes are blocked. Most rows leave a lane free so
+    // the player can dodge sideways; occasionally all 3 lanes are blocked
+    // by students standing shoulder to shoulder, which forces a jump
+    // instead (jumping always clears an obstacle - see checkCollisions).
+    const roll = Math.random();
+    const blockCount = roll < 0.58 ? 1 : roll < 0.85 ? 2 : 3;
     const lanesShuffled = [0, 1, 2].sort(() => Math.random() - 0.5);
-    const blocked = lanesShuffled.slice(0, blockCount);
+    const blocked = blockCount === 3 ? [0, 1, 2] : lanesShuffled.slice(0, blockCount);
 
     blocked.forEach((lane) => {
       const student = buildStudent();
