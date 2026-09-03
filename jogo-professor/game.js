@@ -332,7 +332,139 @@
     win.rotation.y = Math.PI / 2;
     windowGroup.add(win);
   }
-  for (let z = -10; z > SPAWN_Z * 2; z -= 6) spawnWindow(z, Math.random() < 0.35);
+
+  // Wood classroom doors set into the left wall, framed like the photo
+  // (dark wood door slab + light frame + small nameplate above).
+  const doorMat = toonMat(0x6b4326);
+  const doorFrameMat = toonMat(0xe9e6dc);
+  const doorHandleMat = toonMat(0xc9a24a);
+  const doorPlateMat = toonMat(0x2f5faa, { emissive: 0x1c3a6b, emissiveIntensity: 0.25 });
+  const doorGroup = new THREE.Group();
+  scene.add(doorGroup);
+  function spawnDoor(z) {
+    const w = 1.1;
+    const h = 2.35;
+    const frame = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.16, h + 0.14), doorFrameMat);
+    frame.position.set(-4.57, GROUND_Y + h / 2 + 0.02, z);
+    frame.rotation.y = Math.PI / 2;
+    doorGroup.add(frame);
+
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(w, h), doorMat);
+    door.position.set(-4.55, GROUND_Y + h / 2, z);
+    door.rotation.y = Math.PI / 2;
+    doorGroup.add(door);
+
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), doorHandleMat);
+    handle.position.set(-4.5, GROUND_Y + h * 0.45, z - 0.35);
+    doorGroup.add(handle);
+
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.14), doorPlateMat);
+    plate.position.set(-4.56, GROUND_Y + h + 0.22, z);
+    plate.rotation.y = Math.PI / 2;
+    doorGroup.add(plate);
+  }
+
+  // Occasional big "janelão" showing a night courtyard outside - a wide
+  // opening in the wall using a procedural night-scene texture (sky,
+  // silhouetted trees, lit building, parked cars) instead of glass.
+  function makeCourtyardTexture() {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 384;
+    const ctx = c.getContext("2d");
+    const sky = ctx.createLinearGradient(0, 0, 0, c.height);
+    sky.addColorStop(0, "#0c1220");
+    sky.addColorStop(1, "#1c2436");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    // ground / plaza
+    ctx.fillStyle = "#3a3f46";
+    ctx.fillRect(0, c.height * 0.72, c.width, c.height * 0.28);
+
+    // lit building block on the right
+    ctx.fillStyle = "#2a2e38";
+    ctx.fillRect(c.width * 0.58, c.height * 0.15, c.width * 0.42, c.height * 0.6);
+    for (let ry = 0; ry < 6; ry++) {
+      for (let rx = 0; rx < 5; rx++) {
+        ctx.fillStyle = Math.random() < 0.4 ? "#ffe9a8" : "#12161f";
+        ctx.fillRect(
+          c.width * 0.6 + rx * 18,
+          c.height * 0.2 + ry * 14,
+          10,
+          9
+        );
+      }
+    }
+
+    // a bright light flare
+    const flare = ctx.createRadialGradient(c.width * 0.63, c.height * 0.22, 2, c.width * 0.63, c.height * 0.22, 60);
+    flare.addColorStop(0, "rgba(255,255,255,0.9)");
+    flare.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = flare;
+    ctx.fillRect(c.width * 0.4, 0, c.width * 0.5, c.height * 0.5);
+
+    // tree silhouettes on the left
+    ctx.fillStyle = "#10140f";
+    for (let i = 0; i < 3; i++) {
+      const tx = c.width * (0.08 + i * 0.14);
+      const ty = c.height * 0.62;
+      ctx.fillRect(tx - 3, ty, 6, c.height * 0.18);
+      ctx.beginPath();
+      ctx.arc(tx, ty - 10 - i * 6, 34 + i * 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // parked car silhouettes
+    ctx.fillStyle = "#15181d";
+    for (let i = 0; i < 4; i++) {
+      const cx = c.width * (0.02 + i * 0.13);
+      const cy = c.height * 0.84;
+      ctx.fillRect(cx, cy, 44, 16);
+      ctx.fillRect(cx + 8, cy - 8, 26, 10);
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    return tex;
+  }
+  const courtyardTexture = makeCourtyardTexture();
+  const courtyardMat = new THREE.MeshBasicMaterial({ map: courtyardTexture });
+  const courtyardFrameMat = toonMat(0xe9e6dc);
+  const courtyardGroup = new THREE.Group();
+  scene.add(courtyardGroup);
+  function spawnCourtyardWindow(z) {
+    const w = 2.6;
+    const h = 3.6;
+    const frame = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.2, h + 0.2), courtyardFrameMat);
+    frame.position.set(-4.57, GROUND_Y + h / 2 + 0.4, z);
+    frame.rotation.y = Math.PI / 2;
+    courtyardGroup.add(frame);
+    const view = new THREE.Mesh(new THREE.PlaneGeometry(w, h), courtyardMat);
+    view.position.set(-4.55, GROUND_Y + h / 2 + 0.4, z);
+    view.rotation.y = Math.PI / 2;
+    courtyardGroup.add(view);
+  }
+
+  // Lay out the left wall as an alternating rhythm: door, small window,
+  // door, big "janelão" every so often - matching the photographed hallway.
+  {
+    let z = -8;
+    let stepIndex = 0;
+    while (z > SPAWN_Z * 2) {
+      const bigWindowTurn = stepIndex % 5 === 4;
+      if (bigWindowTurn) {
+        spawnCourtyardWindow(z);
+        z -= 5.5;
+      } else if (stepIndex % 2 === 0) {
+        spawnDoor(z);
+        z -= 4.2;
+      } else {
+        spawnWindow(z, Math.random() < 0.4);
+        z -= 4.2;
+      }
+      stepIndex++;
+    }
+  }
 
   // Ceiling: white ceramic tile grid with a recessed duct band (matches photo)
   const ceilGeo = new THREE.PlaneGeometry(9, 200);
@@ -525,80 +657,163 @@
   }
 
   // ---------- Dragãozinho (collectible, gives bonus points) ----------
+  // Built to read clearly as a dragon rather than a bird: elongated
+  // serpentine body/tail, clawed legs, back spikes, horns + a long snout,
+  // and bat-style membrane wings with rib struts instead of solid teardrops.
   function buildDragon() {
     const g = new THREE.Group();
-    const bodyMat = toonMat(0x2ec96b, { emissive: 0x0f8a44, emissiveIntensity: 0.35 });
-    const bellyMat = toonMat(0xd9f5a3);
-    const wingMat = toonMat(0x58e08a, {
-      emissive: 0x1fae5a,
-      emissiveIntensity: 0.5,
+    const bodyMat = toonMat(0x2e8f4a, { emissive: 0x0f5a2a, emissiveIntensity: 0.3 });
+    const bellyMat = toonMat(0xd9c56a);
+    const spikeMat = toonMat(0x8a6a2e);
+    const clawMat = toonMat(0xe8dcb0);
+    const wingMat = toonMat(0x3a2e5c, {
+      emissive: 0x1c1638,
+      emissiveIntensity: 0.35,
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.88,
       side: THREE.DoubleSide
     });
+    const wingRibMat = toonMat(0x241c40);
 
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), bodyMat);
-    body.scale.set(1, 0.85, 1.3);
-    g.add(body);
+    // ---- Serpentine body: three tapering segments (chest -> waist -> hip) ----
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), bodyMat);
+    chest.scale.set(1, 0.8, 1.1);
+    chest.position.set(0, 0.02, 0.08);
+    g.add(chest);
 
-    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), bellyMat);
-    belly.position.set(0, -0.05, 0.02);
-    belly.scale.set(0.9, 0.7, 1.1);
+    const waist = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), bodyMat);
+    waist.scale.set(0.85, 0.7, 1);
+    waist.position.set(0, -0.02, -0.14);
+    g.add(waist);
+
+    const hip = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), bodyMat);
+    hip.scale.set(0.7, 0.6, 0.9);
+    hip.position.set(0, -0.03, -0.32);
+    g.add(hip);
+
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), bellyMat);
+    belly.position.set(0, -0.07, 0.06);
+    belly.scale.set(0.85, 0.55, 1.15);
     g.add(belly);
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), bodyMat);
-    head.position.set(0, 0.08, 0.22);
+    // ---- Head: bigger skull, brow ridge, elongated snout, nostrils ----
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), bodyMat);
+    head.position.set(0, 0.1, 0.28);
     g.add(head);
 
-    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.12, 8), bodyMat);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.06), spikeMat);
+    brow.position.set(0, 0.16, 0.33);
+    g.add(brow);
+
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.22, 8), bodyMat);
     snout.rotation.x = Math.PI / 2;
-    snout.position.set(0, 0.06, 0.34);
+    snout.position.set(0, 0.05, 0.44);
+    snout.scale.set(1, 0.75, 1);
     g.add(snout);
 
-    const hornGeo = new THREE.ConeGeometry(0.02, 0.07, 6);
-    const hornL = new THREE.Mesh(hornGeo, bodyMat);
-    hornL.position.set(-0.05, 0.17, 0.18);
-    hornL.rotation.z = -0.3;
+    [-0.025, 0.025].forEach((x) => {
+      const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), new THREE.MeshBasicMaterial({ color: 0x140c08 }));
+      nostril.position.set(x, 0.04, 0.53);
+      g.add(nostril);
+    });
+
+    const hornGeo = new THREE.ConeGeometry(0.022, 0.14, 6);
+    const hornL = new THREE.Mesh(hornGeo, spikeMat);
+    hornL.position.set(-0.06, 0.2, 0.24);
+    hornL.rotation.set(-0.3, 0, -0.4);
     const hornR = hornL.clone();
-    hornR.position.x = 0.05;
-    hornR.rotation.z = 0.3;
+    hornR.position.x = 0.06;
+    hornR.rotation.z = 0.4;
     g.add(hornL, hornR);
 
     // eyes
-    const eyeGeo = new THREE.SphereGeometry(0.018, 6, 6);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeL.position.set(-0.05, 0.1, 0.3);
-    const eyeR = eyeL.clone();
-    eyeR.position.x = 0.05;
-    g.add(eyeL, eyeR);
+    const eyeGeo = new THREE.SphereGeometry(0.02, 6, 6);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffcc33 });
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x110d05 });
+    [-0.06, 0.06].forEach((x) => {
+      const eye = new THREE.Mesh(eyeGeo, eyeMat);
+      eye.position.set(x, 0.13, 0.36);
+      g.add(eye);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), pupilMat);
+      pupil.position.set(x, 0.13, 0.375);
+      g.add(pupil);
+    });
 
-    // wings (flat triangles), animated in the tick loop
+    // ---- Spikes down the spine, from neck to tail tip ----
+    const spineSpikePositions = [0.24, 0.12, 0, -0.12, -0.24, -0.36, -0.46];
+    spineSpikePositions.forEach((z, i) => {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.028 - i * 0.002, 0.09 - i * 0.006, 5), spikeMat);
+      spike.position.set(0, 0.14 - i * 0.012, z);
+      spike.rotation.x = -0.25;
+      g.add(spike);
+    });
+
+    // ---- Tail: long tapering cone ending in a spade tip ----
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.42, 8), bodyMat);
+    tail.rotation.x = -Math.PI / 2;
+    tail.position.set(0, -0.04, -0.5);
+    g.add(tail);
+    const tailTip = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.1, 4), spikeMat);
+    tailTip.rotation.x = -Math.PI / 2;
+    tailTip.rotation.z = Math.PI / 4;
+    tailTip.position.set(0, -0.05, -0.72);
+    g.add(tailTip);
+
+    // ---- Four tiny clawed legs, tucked under the body mid-flight ----
+    [-1, 1].forEach((side) => {
+      [0.06, -0.22].forEach((z) => {
+        const leg = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), bodyMat);
+        leg.scale.set(0.8, 1.3, 0.8);
+        leg.position.set(side * 0.11, -0.13, z);
+        g.add(leg);
+        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 5), clawMat);
+        claw.position.set(side * 0.11, -0.18, z + 0.03);
+        claw.rotation.x = Math.PI / 2.4;
+        g.add(claw);
+      });
+    });
+
+    // ---- Wings: leathery membrane with visible rib struts, bat-style ----
     function makeWing(sign) {
+      const wingGroup = new THREE.Group();
       const shape = new THREE.Shape();
       shape.moveTo(0, 0);
-      shape.lineTo(sign * 0.32, 0.12);
-      shape.lineTo(sign * 0.26, -0.05);
-      shape.lineTo(sign * 0.14, -0.14);
-      shape.lineTo(0, -0.02);
+      shape.lineTo(sign * 0.16, 0.22);
+      shape.lineTo(sign * 0.34, 0.16);
+      shape.lineTo(sign * 0.44, -0.02);
+      shape.lineTo(sign * 0.34, -0.1);
+      shape.lineTo(sign * 0.2, -0.16);
+      shape.lineTo(sign * 0.08, -0.1);
+      shape.lineTo(0, -0.04);
       const geo = new THREE.ShapeGeometry(shape);
-      const wing = new THREE.Mesh(geo, wingMat);
-      wing.position.set(sign * 0.08, 0.05, -0.02);
-      return wing;
+      const membrane = new THREE.Mesh(geo, wingMat);
+      wingGroup.add(membrane);
+
+      // rib struts fanning out from the shoulder, like finger bones
+      const ribTips = [
+        [sign * 0.16, 0.22],
+        [sign * 0.34, 0.16],
+        [sign * 0.44, -0.02],
+        [sign * 0.34, -0.1]
+      ];
+      ribTips.forEach(([tx, ty]) => {
+        const len = Math.hypot(tx, ty);
+        const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.01, len, 4), wingRibMat);
+        rib.position.set(tx / 2, ty / 2, 0.002);
+        rib.rotation.z = Math.atan2(ty, tx) - Math.PI / 2;
+        wingGroup.add(rib);
+      });
+
+      wingGroup.position.set(sign * 0.1, 0.08, -0.04);
+      return wingGroup;
     }
     const wingL = makeWing(-1);
     const wingR = makeWing(1);
     g.add(wingL, wingR);
 
-    // tail
-    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.34, 8), bodyMat);
-    tail.rotation.x = -Math.PI / 2;
-    tail.position.set(0, -0.02, -0.32);
-    g.add(tail);
-
     g.userData.wings = { wingL, wingR };
     g.userData.flap = Math.random() * Math.PI * 2;
-    g.scale.setScalar(1.35);
+    g.scale.setScalar(1.5);
     return g;
   }
 
@@ -916,6 +1131,18 @@
       if (s.position.z > 10) s.position.z -= (Math.abs(SPAWN_Z) * 2 + 20);
     });
     tubeGroup.children.forEach((s) => {
+      s.position.z += move;
+      if (s.position.z > 10) s.position.z -= (Math.abs(SPAWN_Z) * 2 + 20);
+    });
+    outletGroup.children.forEach((s) => {
+      s.position.z += move;
+      if (s.position.z > 10) s.position.z -= (Math.abs(SPAWN_Z) * 2 + 20);
+    });
+    doorGroup.children.forEach((s) => {
+      s.position.z += move;
+      if (s.position.z > 10) s.position.z -= (Math.abs(SPAWN_Z) * 2 + 20);
+    });
+    courtyardGroup.children.forEach((s) => {
       s.position.z += move;
       if (s.position.z > 10) s.position.z -= (Math.abs(SPAWN_Z) * 2 + 20);
     });
