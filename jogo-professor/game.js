@@ -48,8 +48,8 @@
 
   // ---------- Three.js setup ----------
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0xe4e0d4, 0.022);
-  scene.background = new THREE.Color(0xe4e0d4);
+  scene.fog = new THREE.FogExp2(0xbfe4ff, 0.02);
+  scene.background = new THREE.Color(0xbfe4ff);
 
   // ---------- Procedural textures (to mimic the reference photo) ----------
   function makeTileTexture({
@@ -101,63 +101,42 @@
     return tex;
   }
 
-  function makeMarbleTexture() {
+  // Cheerful painted-locker wall: alternating bright color blocks with a
+  // bold dark seam between each, cartoon-flat instead of realistic granite.
+  function makeLockerTexture() {
     const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 1024;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#cabfa4";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Blotchy granite speckle
-    for (let i = 0; i < 3200; i++) {
-      const shade = Math.random();
-      if (shade < 0.5) {
-        ctx.fillStyle = `rgba(90,75,55,${Math.random() * 0.25})`;
-      } else if (shade < 0.8) {
-        ctx.fillStyle = `rgba(230,220,200,${Math.random() * 0.3})`;
-      } else {
-        ctx.fillStyle = `rgba(60,50,35,${Math.random() * 0.35})`;
-      }
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      const s = Math.random() * 3 + 0.5;
-      ctx.fillRect(x, y, s, s);
-    }
-
-    // Vein-like streaks
-    ctx.strokeStyle = "rgba(80,65,45,0.18)";
-    for (let i = 0; i < 26; i++) {
-      ctx.beginPath();
-      const x0 = Math.random() * canvas.width;
-      let y0 = Math.random() * canvas.height;
-      ctx.moveTo(x0, y0);
-      for (let s = 0; s < 6; s++) {
-        y0 += canvas.height / 6;
-        ctx.lineTo(x0 + (Math.random() - 0.5) * 60, y0);
-      }
-      ctx.lineWidth = Math.random() * 1.5 + 0.4;
-      ctx.stroke();
-    }
-
-    // Tile grid (large granite slabs)
+    const lockerColors = ["#3ea6ff", "#2e8fe0", "#ffb238", "#ff6f59", "#3ecf8e"];
     const cols = 4;
-    const rows = 24;
-    ctx.strokeStyle = "rgba(40,35,25,0.5)";
-    ctx.lineWidth = 2;
+    const rows = 26;
+    const cw = canvas.width / cols;
+    const rh = canvas.height / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        ctx.fillStyle = lockerColors[(r + c) % lockerColors.length];
+        ctx.fillRect(c * cw + 3, r * rh + 3, cw - 6, rh - 6);
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillRect(c * cw + 3, r * rh + 3, cw - 6, 6);
+        ctx.fillStyle = "rgba(0,0,0,0.12)";
+        ctx.fillRect(c * cw + 3, r * rh + rh - 9, cw - 6, 6);
+      }
+    }
+    ctx.strokeStyle = "#20242c";
+    ctx.lineWidth = 5;
     for (let c = 0; c <= cols; c++) {
       ctx.beginPath();
-      ctx.moveTo((c * canvas.width) / cols, 0);
-      ctx.lineTo((c * canvas.width) / cols, canvas.height);
+      ctx.moveTo(c * cw, 0);
+      ctx.lineTo(c * cw, canvas.height);
       ctx.stroke();
     }
     for (let r = 0; r <= rows; r++) {
       ctx.beginPath();
-      ctx.moveTo(0, (r * canvas.height) / rows);
-      ctx.lineTo(canvas.width, (r * canvas.height) / rows);
+      ctx.moveTo(0, r * rh);
+      ctx.lineTo(canvas.width, r * rh);
       ctx.stroke();
     }
-
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
@@ -197,25 +176,48 @@
     });
   }
 
+  // ---------- Cartoon ink outlines ----------
+  // Classic cel-shading trick: for every mesh in a built character/prop
+  // group, add a slightly larger black clone rendered from the inside
+  // (BackSide) as a child of that mesh, so it inherits its transform and
+  // reads as a hand-inked outline around the silhouette. Call once, after
+  // a group is fully assembled. Mark any mesh added earlier with
+  // `mesh.userData.noOutline = true` to skip small/delicate bits (glasses
+  // lenses, eyes, glowing screens) where a thick black ring looks wrong.
+  const outlineInkMat = new THREE.MeshBasicMaterial({ color: 0x1a1712, side: THREE.BackSide });
+  function addToonOutlines(group, scale = 1.07) {
+    const meshes = [];
+    group.traverse((child) => {
+      if (child.isMesh && !child.userData.noOutline) meshes.push(child);
+    });
+    meshes.forEach((mesh) => {
+      const outline = new THREE.Mesh(mesh.geometry, outlineInkMat);
+      outline.scale.setScalar(scale);
+      outline.renderOrder = -1;
+      outline.userData.noOutline = true;
+      mesh.add(outline);
+    });
+  }
+
   const floorTexture = makeTileTexture({
-    base: "#eceae2",
-    grout: "#c3beb0",
+    base: "#fff3d6",
+    grout: "#f0c76b",
     cols: 9,
     rows: 220,
-    dirty: true
+    dirty: false
   });
   floorTexture.repeat.set(1, 22);
 
   const ceilTexture = makeTileTexture({
-    base: "#f6f5f1",
-    grout: "#d8d4c8",
+    base: "#fffaf0",
+    grout: "#ffe1a8",
     cols: 9,
     rows: 220
   });
   ceilTexture.repeat.set(1, 22);
 
-  const marbleTexture = makeMarbleTexture();
-  marbleTexture.repeat.set(1, 22);
+  const lockerTexture = makeLockerTexture();
+  lockerTexture.repeat.set(1, 22);
 
   const camera = new THREE.PerspectiveCamera(
     62,
@@ -233,11 +235,12 @@
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   wrap.appendChild(renderer.domElement);
 
-  // Lights - bright institutional fluorescent corridor, like the reference photo
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a8f7d, 0.85);
+  // Lights - bright, warm, sunny cartoon-school lighting instead of a flat
+  // institutional glare.
+  const hemi = new THREE.HemisphereLight(0xfff6d9, 0x8fc8e8, 1.0);
   scene.add(hemi);
 
-  const key = new THREE.DirectionalLight(0xfff6e0, 1.15);
+  const key = new THREE.DirectionalLight(0xfff2c4, 1.3);
   key.position.set(6, 14, 6);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -247,17 +250,18 @@
   key.shadow.camera.bottom = -20;
   scene.add(key);
 
-  const rim = new THREE.PointLight(0x8fd8ff, 0.6, 40);
+  const rim = new THREE.PointLight(0x7fd4ff, 0.8, 40);
   rim.position.set(0, 6, -10);
   scene.add(rim);
 
-  // ---------- Corridor (based on reference photo: white tile floor with
-  // a wood strip divider, beige/granite marbled wall on one side, plain
-  // white wall with windows on the other, white ceramic-tiled ceiling) ----------
+  // ---------- Corridor (cartoon-stylized school hallway: warm cream tile
+  // floor, an orange wood divider strip, colorful painted-locker wall on
+  // one side, sunny butter-yellow wall with sky-blue windows on the
+  // other, bright ceiling) ----------
   const corridorGroup = new THREE.Group();
   scene.add(corridorGroup);
 
-  const floorMat = toonMat(0xeceae2, { map: floorTexture });
+  const floorMat = toonMat(0xfff3d6, { map: floorTexture });
   const floorGeo = new THREE.PlaneGeometry(9, 200);
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.rotation.x = -Math.PI / 2;
@@ -265,46 +269,46 @@
   floor.receiveShadow = true;
   corridorGroup.add(floor);
 
-  // Low step/riser along the left side of the walkway (as in the photo)
-  const riserMat = toonMat(0xd9d6cc);
+  // Low step/riser along the left side of the walkway
+  const riserMat = toonMat(0xffe4a3);
   const riser = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 200), riserMat);
   riser.position.set(-3.3, 0.07, -80);
   riser.receiveShadow = true;
   corridorGroup.add(riser);
 
-  // Wood strip dividing the corridor lengthwise (like the photo)
-  const woodMat = toonMat(0x8a5a2e);
+  // Wood strip dividing the corridor lengthwise, painted a bright orange
+  const woodMat = toonMat(0xe8792e);
   const woodStrip = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 200), woodMat);
   woodStrip.rotation.x = -Math.PI / 2;
   woodStrip.position.set(0.9, 0.025, -80);
   corridorGroup.add(woodStrip);
 
-  // Right wall: beige/granite marbled slab with a dark accent band
-  const marbleWallMat = toonMat(0xcabfa4, { map: marbleTexture });
+  // Right wall: cheerful painted lockers instead of realistic marble
+  const marbleWallMat = toonMat(0x3ea6ff, { map: lockerTexture });
   const marbleWall = new THREE.Mesh(new THREE.PlaneGeometry(200, 10), marbleWallMat);
   marbleWall.position.set(4.6, 5, -80);
   marbleWall.rotation.y = -Math.PI / 2;
   scene.add(marbleWall);
 
-  const accentBandMat = toonMat(0x2b2b2b);
+  const accentBandMat = toonMat(0xff6f59);
   const accentBand = new THREE.Mesh(new THREE.PlaneGeometry(200, 0.55), accentBandMat);
   accentBand.position.set(4.58, 7.55, -80);
   accentBand.rotation.y = -Math.PI / 2;
   scene.add(accentBand);
 
-  // Small wall outlet / plate details on the marble wall (like the photo)
+  // Small wall plate details on the locker wall
   const outletGroup = new THREE.Group();
   scene.add(outletGroup);
   function spawnOutlet(z) {
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.32), toonMat(0xf2efe6));
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.32), toonMat(0xfff6e6));
     plate.position.set(4.55, 1.3, z);
     plate.rotation.y = -Math.PI / 2;
     outletGroup.add(plate);
   }
   for (let z = -14; z > SPAWN_Z * 2; z -= 11) spawnOutlet(z);
 
-  // Left wall: plain white wall with recessed window panels
-  const wallMat = toonMat(0xf5f4f0);
+  // Left wall: sunny butter-yellow wall with sky-blue window panels
+  const wallMat = toonMat(0xffe9ae);
   function makeWall(x, rotY) {
     const geo = new THREE.PlaneGeometry(200, 10);
     const wall = new THREE.Mesh(geo, wallMat);
@@ -315,9 +319,9 @@
   }
   makeWall(-4.6, Math.PI / 2);
 
-  // Window panels on the left wall (dark reflective glass with a soft highlight)
-  const windowMat = toonMat(0x2a3138, { emissive: 0x3b4550, emissiveIntensity: 0.4 });
-  const windowFrameMat = toonMat(0xdedad0);
+  // Window panels on the left wall (bright sunny sky-blue glass)
+  const windowMat = toonMat(0x8fd8ff, { emissive: 0xbfeaff, emissiveIntensity: 0.5 });
+  const windowFrameMat = toonMat(0xffffff);
   const windowGroup = new THREE.Group();
   scene.add(windowGroup);
   function spawnWindow(z, small) {
@@ -335,12 +339,12 @@
     windowGroup.add(win);
   }
 
-  // Wood classroom doors set into the left wall, framed like the photo
-  // (dark wood door slab + light frame + small nameplate above).
-  const doorMat = toonMat(0x6b4326);
-  const doorFrameMat = toonMat(0xe9e6dc);
-  const doorHandleMat = toonMat(0xc9a24a);
-  const doorPlateMat = toonMat(0x2f5faa, { emissive: 0x1c3a6b, emissiveIntensity: 0.25 });
+  // Colorful classroom doors set into the left wall, framed brightly
+  // (a saturated door slab that varies per door + white frame + nameplate).
+  const doorColors = [0xff6f59, 0x3ecf8e, 0xffb238, 0x3ea6ff, 0xb26fe0];
+  const doorFrameMat = toonMat(0xffffff);
+  const doorHandleMat = toonMat(0xffe082);
+  const doorPlateMat = toonMat(0xfff6e6);
   const doorGroup = new THREE.Group();
   scene.add(doorGroup);
   function spawnDoor(z) {
@@ -351,6 +355,7 @@
     frame.rotation.y = Math.PI / 2;
     doorGroup.add(frame);
 
+    const doorMat = toonMat(doorColors[Math.floor(Math.random() * doorColors.length)]);
     const door = new THREE.Mesh(new THREE.PlaneGeometry(w, h), doorMat);
     door.position.set(-4.55, GROUND_Y + h / 2, z);
     door.rotation.y = Math.PI / 2;
@@ -366,62 +371,70 @@
     doorGroup.add(plate);
   }
 
-  // Occasional big "janelão" showing a night courtyard outside - a wide
-  // opening in the wall using a procedural night-scene texture (sky,
-  // silhouetted trees, lit building, parked cars) instead of glass.
+  // Occasional big "janelão" showing a sunny cartoon courtyard outside -
+  // a wide opening in the wall using a bright procedural day scene (blue
+  // sky, sun, fluffy clouds, green trees, a colorful building) instead of
+  // a murky night view.
   function makeCourtyardTexture() {
     const c = document.createElement("canvas");
     c.width = 512;
     c.height = 384;
     const ctx = c.getContext("2d");
     const sky = ctx.createLinearGradient(0, 0, 0, c.height);
-    sky.addColorStop(0, "#0c1220");
-    sky.addColorStop(1, "#1c2436");
+    sky.addColorStop(0, "#7fd0ff");
+    sky.addColorStop(1, "#d8f3ff");
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, c.width, c.height);
 
+    // sun
+    const sun = ctx.createRadialGradient(c.width * 0.18, c.height * 0.2, 4, c.width * 0.18, c.height * 0.2, 70);
+    sun.addColorStop(0, "rgba(255,250,210,1)");
+    sun.addColorStop(1, "rgba(255,250,210,0)");
+    ctx.fillStyle = sun;
+    ctx.fillRect(0, 0, c.width * 0.45, c.height * 0.5);
+
+    // fluffy clouds
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    [[0.55, 0.18, 30], [0.68, 0.22, 22], [0.32, 0.32, 20]].forEach(([fx, fy, r]) => {
+      ctx.beginPath();
+      ctx.arc(c.width * fx, c.height * fy, r, 0, Math.PI * 2);
+      ctx.arc(c.width * fx + r * 0.8, c.height * fy + 4, r * 0.7, 0, Math.PI * 2);
+      ctx.arc(c.width * fx - r * 0.8, c.height * fy + 4, r * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
     // ground / plaza
-    ctx.fillStyle = "#3a3f46";
+    ctx.fillStyle = "#e8dcae";
     ctx.fillRect(0, c.height * 0.72, c.width, c.height * 0.28);
 
-    // lit building block on the right
-    ctx.fillStyle = "#2a2e38";
+    // colorful building block on the right
+    ctx.fillStyle = "#ff9a6b";
     ctx.fillRect(c.width * 0.58, c.height * 0.15, c.width * 0.42, c.height * 0.6);
     for (let ry = 0; ry < 6; ry++) {
       for (let rx = 0; rx < 5; rx++) {
-        ctx.fillStyle = Math.random() < 0.4 ? "#ffe9a8" : "#12161f";
-        ctx.fillRect(
-          c.width * 0.6 + rx * 18,
-          c.height * 0.2 + ry * 14,
-          10,
-          9
-        );
+        ctx.fillStyle = "#8fe0ff";
+        ctx.fillRect(c.width * 0.6 + rx * 18, c.height * 0.2 + ry * 14, 10, 9);
       }
     }
 
-    // a bright light flare
-    const flare = ctx.createRadialGradient(c.width * 0.63, c.height * 0.22, 2, c.width * 0.63, c.height * 0.22, 60);
-    flare.addColorStop(0, "rgba(255,255,255,0.9)");
-    flare.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = flare;
-    ctx.fillRect(c.width * 0.4, 0, c.width * 0.5, c.height * 0.5);
-
-    // tree silhouettes on the left
-    ctx.fillStyle = "#10140f";
+    // trees
     for (let i = 0; i < 3; i++) {
       const tx = c.width * (0.08 + i * 0.14);
       const ty = c.height * 0.62;
+      ctx.fillStyle = "#8a5a2e";
       ctx.fillRect(tx - 3, ty, 6, c.height * 0.18);
+      ctx.fillStyle = i % 2 === 0 ? "#5cb85c" : "#4aa84a";
       ctx.beginPath();
       ctx.arc(tx, ty - 10 - i * 6, 34 + i * 6, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // parked car silhouettes
-    ctx.fillStyle = "#15181d";
+    // parked cars
+    const carColors = ["#ff6f59", "#3ea6ff", "#ffb238"];
     for (let i = 0; i < 4; i++) {
       const cx = c.width * (0.02 + i * 0.13);
       const cy = c.height * 0.84;
+      ctx.fillStyle = carColors[i % carColors.length];
       ctx.fillRect(cx, cy, 44, 16);
       ctx.fillRect(cx + 8, cy - 8, 26, 10);
     }
@@ -431,7 +444,7 @@
   }
   const courtyardTexture = makeCourtyardTexture();
   const courtyardMat = new THREE.MeshBasicMaterial({ map: courtyardTexture });
-  const courtyardFrameMat = toonMat(0xe9e6dc);
+  const courtyardFrameMat = toonMat(0xffffff);
   const courtyardGroup = new THREE.Group();
   scene.add(courtyardGroup);
   // Sits on the right (marble) wall, in front of it like a balcony opening
@@ -525,6 +538,7 @@
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 })
     );
     shine.position.set(0.08, 1.92, 0.24);
+    shine.userData.noOutline = true;
     g.add(shine);
 
     // Thin ("ralo") hair covering most of the head - a light sparse layer
@@ -571,8 +585,10 @@
     const lensGeo = new THREE.TorusGeometry(0.08, 0.02, 8, 16);
     const lensL = new THREE.Mesh(lensGeo, glassMat);
     lensL.position.set(-0.13, 1.72, 0.3);
+    lensL.userData.noOutline = true;
     const lensR = lensL.clone();
     lensR.position.x = 0.13;
+    lensR.userData.noOutline = true;
     g.add(lensL, lensR);
 
     // Torso
@@ -622,6 +638,7 @@
 
     g.userData.parts = { armL, armR, legL, legR, head, torso };
     g.castShadow = true;
+    addToonOutlines(g);
     return g;
   }
 
@@ -635,7 +652,7 @@
   scene.add(professor);
 
   // ---------- Student obstacle (stylized, looking at phone) ----------
-  const studentColors = [0x5b6478, 0x8a6a4e, 0xd6d1c4, 0x3a5a78, 0x6b4a3a, 0x4a5240];
+  const studentColors = [0xff6f59, 0x3ecf8e, 0xffb238, 0xb26fe0, 0xff5c99, 0x3ea6ff];
 
   function buildStudent() {
     const g = new THREE.Group();
@@ -692,9 +709,11 @@
     );
     phoneScreen.position.set(0, 1.325, 0.475);
     phoneScreen.rotation.x = -0.75;
+    phoneScreen.userData.noOutline = true;
     g.add(phoneScreen);
 
     g.userData.hitRadius = 0.45;
+    addToonOutlines(g);
     return g;
   }
 
@@ -756,6 +775,7 @@
     [-0.025, 0.025].forEach((x) => {
       const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), new THREE.MeshBasicMaterial({ color: 0x140c08 }));
       nostril.position.set(x, 0.04, 0.53);
+      nostril.userData.noOutline = true;
       g.add(nostril);
     });
 
@@ -775,9 +795,11 @@
     [-0.06, 0.06].forEach((x) => {
       const eye = new THREE.Mesh(eyeGeo, eyeMat);
       eye.position.set(x, 0.13, 0.36);
+      eye.userData.noOutline = true;
       g.add(eye);
       const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), pupilMat);
       pupil.position.set(x, 0.13, 0.375);
+      pupil.userData.noOutline = true;
       g.add(pupil);
     });
 
@@ -829,6 +851,7 @@
       shape.lineTo(0, -0.04);
       const geo = new THREE.ShapeGeometry(shape);
       const membrane = new THREE.Mesh(geo, wingMat);
+      membrane.userData.noOutline = true; // flat shape - a backface outline shell wouldn't read correctly
       wingGroup.add(membrane);
 
       // rib struts fanning out from the shoulder, like finger bones
@@ -856,6 +879,7 @@
     g.userData.wings = { wingL, wingR };
     g.userData.flap = Math.random() * Math.PI * 2;
     g.scale.setScalar(1.5);
+    addToonOutlines(g);
     return g;
   }
 
