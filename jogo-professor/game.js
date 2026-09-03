@@ -517,29 +517,35 @@
     head.castShadow = true;
     g.add(head);
 
-    // subtle shine on bald head
+    // subtle shine, just a hint of the forehead catching light - not a
+    // full bald dome, since the head is meant to read as thinning-haired
+    // rather than fully bald.
     const shine = new THREE.Mesh(
-      new THREE.SphereGeometry(0.1, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 })
+      new THREE.SphereGeometry(0.055, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 })
     );
-    shine.position.set(0.08, 1.9, 0.2);
+    shine.position.set(0.08, 1.92, 0.24);
     g.add(shine);
 
-    // Fuller receding hair (horseshoe band of tufts around the sides/back,
-    // two rows for volume) - only the very top and front stay bald/shiny,
+    // Thin ("ralo") hair covering most of the head - a light sparse layer
+    // over the crown/top plus a fuller horseshoe band on the sides/back,
     // like Dario's partial hairCap technique in Hero Vortex but built from
-    // overlapping tufts instead of one solid dome.
+    // overlapping tufts instead of one solid dome. Only a small patch of
+    // forehead stays bare, not the whole scalp.
     const hairMat = toonMat(0x5a5048);
     const hairTuftsGroup = new THREE.Group();
     hairTuftsGroup.position.copy(head.position);
     g.add(hairTuftsGroup);
+
+    // Fuller band on the sides/back/crown
     [
-      { r: 0.34, yBase: 0.0, scale: 1.15 },
-      { r: 0.32, yBase: -0.09, scale: 1.0 }
+      { r: 0.34, yBase: 0.03, scale: 1.15 },
+      { r: 0.33, yBase: -0.06, scale: 1.05 },
+      { r: 0.31, yBase: -0.14, scale: 0.9 }
     ].forEach(({ r, yBase, scale }) => {
-      for (let deg = 65; deg <= 295; deg += 13) {
+      for (let deg = 40; deg <= 320; deg += 12) {
         const theta = (deg * Math.PI) / 180;
-        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 6, 5), hairMat);
+        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.065 * scale, 6, 5), hairMat);
         tuft.position.set(
           Math.sin(theta) * r,
           yBase + Math.sin(deg * 3) * 0.015,
@@ -549,6 +555,16 @@
         hairTuftsGroup.add(tuft);
       }
     });
+
+    // Sparse thin wisps combed over the top of the head, leaving only a
+    // small bare patch at the very front hairline.
+    for (let deg = -55; deg <= 55; deg += 11) {
+      const theta = (deg * Math.PI) / 180;
+      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.045, 5, 4), hairMat);
+      wisp.position.set(Math.sin(theta) * 0.3, 0.24, Math.cos(theta) * 0.14 - 0.05);
+      wisp.scale.set(1, 0.35, 1);
+      hairTuftsGroup.add(wisp);
+    }
 
     // Glasses
     const glassMat = toonMat(0x111111);
