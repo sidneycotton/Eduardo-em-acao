@@ -164,6 +164,39 @@
     return tex;
   }
 
+  // ---------- Toon shading (same technique as Hero Vortex) ----------
+  // 4-step brightness ramp baked into a tiny gradient texture, fed to
+  // THREE.MeshToonMaterial as gradientMap - identical pattern to
+  // makeLocalToonGradient() in Hero Vortex's js/battlefields/*.js files.
+  function makeLocalToonGradient(baseRgb) {
+    const c = document.createElement("canvas");
+    c.width = 4;
+    c.height = 1;
+    const ctx = c.getContext("2d");
+    const steps = [0.35, 0.6, 0.85, 1.0];
+    steps.forEach((f, i) => {
+      ctx.fillStyle = `rgb(${Math.floor(baseRgb[0] * f)},${Math.floor(baseRgb[1] * f)},${Math.floor(baseRgb[2] * f)})`;
+      ctx.fillRect(i, 0, 1, 1);
+    });
+    const tex = new THREE.CanvasTexture(c);
+    tex.minFilter = tex.magFilter = THREE.NearestFilter;
+    return tex;
+  }
+
+  function hexToRgb(hex) {
+    return [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
+  }
+
+  // Builds a MeshToonMaterial with a gradient tinted to its own base color,
+  // mirroring how Hero Vortex shades every prop and character.
+  function toonMat(color, extra = {}) {
+    return new THREE.MeshToonMaterial({
+      color,
+      gradientMap: makeLocalToonGradient(hexToRgb(color)),
+      ...extra
+    });
+  }
+
   const floorTexture = makeTileTexture({
     base: "#eceae2",
     grout: "#c3beb0",
@@ -224,11 +257,7 @@
   const corridorGroup = new THREE.Group();
   scene.add(corridorGroup);
 
-  const floorMat = new THREE.MeshStandardMaterial({
-    map: floorTexture,
-    roughness: 0.55,
-    metalness: 0.05
-  });
+  const floorMat = toonMat(0xeceae2, { map: floorTexture });
   const floorGeo = new THREE.PlaneGeometry(9, 200);
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.rotation.x = -Math.PI / 2;
@@ -237,31 +266,27 @@
   corridorGroup.add(floor);
 
   // Low step/riser along the left side of the walkway (as in the photo)
-  const riserMat = new THREE.MeshStandardMaterial({ color: 0xd9d6cc, roughness: 0.6 });
+  const riserMat = toonMat(0xd9d6cc);
   const riser = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 200), riserMat);
   riser.position.set(-3.3, 0.07, -80);
   riser.receiveShadow = true;
   corridorGroup.add(riser);
 
   // Wood strip dividing the corridor lengthwise (like the photo)
-  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8a5a2e, roughness: 0.7 });
+  const woodMat = toonMat(0x8a5a2e);
   const woodStrip = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 200), woodMat);
   woodStrip.rotation.x = -Math.PI / 2;
   woodStrip.position.set(0.9, 0.025, -80);
   corridorGroup.add(woodStrip);
 
   // Right wall: beige/granite marbled slab with a dark accent band
-  const marbleWallMat = new THREE.MeshStandardMaterial({
-    map: marbleTexture,
-    roughness: 0.55,
-    metalness: 0.15
-  });
+  const marbleWallMat = toonMat(0xcabfa4, { map: marbleTexture });
   const marbleWall = new THREE.Mesh(new THREE.PlaneGeometry(200, 10), marbleWallMat);
   marbleWall.position.set(4.6, 5, -80);
   marbleWall.rotation.y = -Math.PI / 2;
   scene.add(marbleWall);
 
-  const accentBandMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.4, metalness: 0.3 });
+  const accentBandMat = toonMat(0x2b2b2b);
   const accentBand = new THREE.Mesh(new THREE.PlaneGeometry(200, 0.55), accentBandMat);
   accentBand.position.set(4.58, 7.55, -80);
   accentBand.rotation.y = -Math.PI / 2;
@@ -271,10 +296,7 @@
   const outletGroup = new THREE.Group();
   scene.add(outletGroup);
   function spawnOutlet(z) {
-    const plate = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.22, 0.32),
-      new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.4 })
-    );
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.32), toonMat(0xf2efe6));
     plate.position.set(4.55, 1.3, z);
     plate.rotation.y = -Math.PI / 2;
     outletGroup.add(plate);
@@ -282,11 +304,7 @@
   for (let z = -14; z > SPAWN_Z * 2; z -= 11) spawnOutlet(z);
 
   // Left wall: plain white wall with recessed window panels
-  const wallMat = new THREE.MeshStandardMaterial({
-    color: 0xf5f4f0,
-    roughness: 0.85,
-    metalness: 0.02
-  });
+  const wallMat = toonMat(0xf5f4f0);
   function makeWall(x, rotY) {
     const geo = new THREE.PlaneGeometry(200, 10);
     const wall = new THREE.Mesh(geo, wallMat);
@@ -298,14 +316,8 @@
   makeWall(-4.6, Math.PI / 2);
 
   // Window panels on the left wall (dark reflective glass with a soft highlight)
-  const windowMat = new THREE.MeshStandardMaterial({
-    color: 0x2a3138,
-    emissive: 0x3b4550,
-    emissiveIntensity: 0.4,
-    roughness: 0.25,
-    metalness: 0.4
-  });
-  const windowFrameMat = new THREE.MeshStandardMaterial({ color: 0xdedad0, roughness: 0.6 });
+  const windowMat = toonMat(0x2a3138, { emissive: 0x3b4550, emissiveIntensity: 0.4 });
+  const windowFrameMat = toonMat(0xdedad0);
   const windowGroup = new THREE.Group();
   scene.add(windowGroup);
   function spawnWindow(z, small) {
@@ -324,13 +336,13 @@
 
   // Ceiling: white ceramic tile grid with a recessed duct band (matches photo)
   const ceilGeo = new THREE.PlaneGeometry(9, 200);
-  const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTexture, roughness: 0.9 });
+  const ceilMat = toonMat(0xf6f5f1, { map: ceilTexture });
   const ceiling = new THREE.Mesh(ceilGeo, ceilMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, 9.5, -80);
   scene.add(ceiling);
 
-  const ductMat = new THREE.MeshStandardMaterial({ color: 0xe7e4da, roughness: 0.8 });
+  const ductMat = toonMat(0xe7e4da);
   const duct = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, 200), ductMat);
   duct.position.set(2.6, 9.2, -80);
   scene.add(duct);
@@ -350,10 +362,10 @@
   function buildProfessor() {
     const g = new THREE.Group();
 
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xe0b48c, roughness: 0.7 });
-    const shirtMat = new THREE.MeshStandardMaterial({ color: 0x2563c9, roughness: 0.55, metalness: 0.15 });
-    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1b1f2b, roughness: 0.7 });
-    const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111318, roughness: 0.6 });
+    const skinMat = toonMat(0xe0b48c);
+    const shirtMat = toonMat(0x2563c9);
+    const pantsMat = toonMat(0x1b1f2b);
+    const shoeMat = toonMat(0x111318);
 
     // Head (bald)
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), skinMat);
@@ -370,7 +382,7 @@
     g.add(shine);
 
     // Glasses
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+    const glassMat = toonMat(0x111111);
     const lensGeo = new THREE.TorusGeometry(0.08, 0.02, 8, 16);
     const lensL = new THREE.Mesh(lensGeo, glassMat);
     lensL.position.set(-0.13, 1.72, 0.3);
@@ -385,10 +397,7 @@
     g.add(torso);
 
     // Tie
-    const tie = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.5, 0.03),
-      new THREE.MeshStandardMaterial({ color: 0x0d1b33 })
-    );
+    const tie = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.03), toonMat(0x0d1b33));
     tie.position.set(0, 1.25, 0.2);
     g.add(tie);
 
@@ -441,9 +450,9 @@
   function buildStudent() {
     const g = new THREE.Group();
     const shirtColor = studentColors[Math.floor(Math.random() * studentColors.length)];
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xd9a879, roughness: 0.7 });
-    const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.6 });
-    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x22242e, roughness: 0.7 });
+    const skinMat = toonMat(0xd9a879);
+    const shirtMat = toonMat(shirtColor);
+    const pantsMat = toonMat(0x22242e);
 
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), skinMat);
     head.position.set(0, 1.55, 0);
@@ -453,7 +462,7 @@
     // simple hair blob
     const hair = new THREE.Mesh(
       new THREE.SphereGeometry(0.3, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-      new THREE.MeshStandardMaterial({ color: 0x2b2116, roughness: 0.9 })
+      toonMat(0x2b2116)
     );
     hair.position.set(0, 1.68, 0.02);
     hair.rotation.x = 0.5;
@@ -483,11 +492,7 @@
     // phone (glowing)
     const phone = new THREE.Mesh(
       new THREE.BoxGeometry(0.16, 0.28, 0.02),
-      new THREE.MeshStandardMaterial({
-        color: 0x9fe8ff,
-        emissive: 0x2ec9ff,
-        emissiveIntensity: 0.9
-      })
+      toonMat(0x9fe8ff, { emissive: 0x2ec9ff, emissiveIntensity: 0.9 })
     );
     phone.position.set(0, 1.35, 0.42);
     phone.rotation.x = -0.6;
@@ -500,16 +505,9 @@
   // ---------- Dragãozinho (collectible, gives bonus points) ----------
   function buildDragon() {
     const g = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x2ec96b,
-      emissive: 0x0f8a44,
-      emissiveIntensity: 0.35,
-      roughness: 0.4,
-      metalness: 0.2
-    });
-    const bellyMat = new THREE.MeshStandardMaterial({ color: 0xd9f5a3, roughness: 0.5 });
-    const wingMat = new THREE.MeshStandardMaterial({
-      color: 0x58e08a,
+    const bodyMat = toonMat(0x2ec96b, { emissive: 0x0f8a44, emissiveIntensity: 0.35 });
+    const bellyMat = toonMat(0xd9f5a3);
+    const wingMat = toonMat(0x58e08a, {
       emissive: 0x1fae5a,
       emissiveIntensity: 0.5,
       transparent: true,
