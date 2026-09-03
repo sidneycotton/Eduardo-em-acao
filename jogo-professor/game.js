@@ -523,22 +523,30 @@
     shine.position.set(0.08, 1.9, 0.2);
     g.add(shine);
 
-    // Thin, receding hair (horseshoe pattern of sparse tufts around the
-    // sides/back only) - top and front stay bald, like Dario's partial
-    // hairCap technique in Hero Vortex but broken into a few thin tufts
-    // instead of one solid dome, so it reads as "ralo" rather than a helmet.
+    // Fuller receding hair (horseshoe band of tufts around the sides/back,
+    // two rows for volume) - only the very top and front stay bald/shiny,
+    // like Dario's partial hairCap technique in Hero Vortex but built from
+    // overlapping tufts instead of one solid dome.
     const hairMat = toonMat(0x5a5048);
     const hairTuftsGroup = new THREE.Group();
     hairTuftsGroup.position.copy(head.position);
     g.add(hairTuftsGroup);
-    for (let deg = 78; deg <= 282; deg += 17) {
-      const theta = (deg * Math.PI) / 180;
-      const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), hairMat);
-      const r = 0.335;
-      tuft.position.set(Math.sin(theta) * r, -0.03 + Math.sin(deg * 3) * 0.015, Math.cos(theta) * r);
-      tuft.scale.set(1, 0.55, 0.7);
-      hairTuftsGroup.add(tuft);
-    }
+    [
+      { r: 0.34, yBase: 0.0, scale: 1.15 },
+      { r: 0.32, yBase: -0.09, scale: 1.0 }
+    ].forEach(({ r, yBase, scale }) => {
+      for (let deg = 65; deg <= 295; deg += 13) {
+        const theta = (deg * Math.PI) / 180;
+        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 6, 5), hairMat);
+        tuft.position.set(
+          Math.sin(theta) * r,
+          yBase + Math.sin(deg * 3) * 0.015,
+          Math.cos(theta) * r
+        );
+        tuft.scale.set(1, 0.6, 0.75);
+        hairTuftsGroup.add(tuft);
+      }
+    });
 
     // Glasses
     const glassMat = toonMat(0x111111);
@@ -653,14 +661,20 @@
     armR.position.x = 0.32;
     g.add(armL, armR);
 
-    // phone (glowing)
-    const phone = new THREE.Mesh(
-      new THREE.BoxGeometry(0.16, 0.28, 0.02),
-      toonMat(0x9fe8ff, { emissive: 0x2ec9ff, emissiveIntensity: 0.9 })
+    // phone (glowing screen, angled up toward the lowered face so it
+    // reads clearly at a glance as "aluno olhando pro celular")
+    const phoneBody = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.36, 0.025), toonMat(0x1a1c22));
+    phoneBody.position.set(0, 1.32, 0.46);
+    phoneBody.rotation.x = -0.75;
+    g.add(phoneBody);
+
+    const phoneScreen = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.16, 0.3),
+      toonMat(0x9fe8ff, { emissive: 0x4fd8ff, emissiveIntensity: 1.4 })
     );
-    phone.position.set(0, 1.35, 0.42);
-    phone.rotation.x = -0.6;
-    g.add(phone);
+    phoneScreen.position.set(0, 1.325, 0.475);
+    phoneScreen.rotation.x = -0.75;
+    g.add(phoneScreen);
 
     g.userData.hitRadius = 0.45;
     return g;
