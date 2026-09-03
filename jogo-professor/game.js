@@ -48,7 +48,8 @@
 
   // ---------- Three.js setup ----------
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x05070f, 0.028);
+  scene.fog = new THREE.FogExp2(0xe4e0d4, 0.022);
+  scene.background = new THREE.Color(0xe4e0d4);
 
   const camera = new THREE.PerspectiveCamera(
     62,
@@ -66,11 +67,11 @@
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   wrap.appendChild(renderer.domElement);
 
-  // Lights - neon blue vibe like Hero Vortex
-  const hemi = new THREE.HemisphereLight(0x3ea6ff, 0x0a0a14, 0.65);
+  // Lights - bright institutional fluorescent corridor, like the reference photo
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a8f7d, 0.85);
   scene.add(hemi);
 
-  const key = new THREE.DirectionalLight(0x8fd8ff, 1.1);
+  const key = new THREE.DirectionalLight(0xfff6e0, 1.15);
   key.position.set(6, 14, 6);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -80,18 +81,20 @@
   key.shadow.camera.bottom = -20;
   scene.add(key);
 
-  const rim = new THREE.PointLight(0x00e5ff, 1.4, 40);
+  const rim = new THREE.PointLight(0x8fd8ff, 0.6, 40);
   rim.position.set(0, 6, -10);
   scene.add(rim);
 
-  // ---------- Corridor (floor + walls + neon strips) ----------
+  // ---------- Corridor (based on reference photo: white tile floor with
+  // a wood strip divider, beige/granite marbled wall on one side, plain
+  // white wall with windows on the other, white ceramic-tiled ceiling) ----------
   const corridorGroup = new THREE.Group();
   scene.add(corridorGroup);
 
   const floorMat = new THREE.MeshStandardMaterial({
-    color: 0x10131f,
-    roughness: 0.65,
-    metalness: 0.35
+    color: 0xe9e7df,
+    roughness: 0.55,
+    metalness: 0.05
   });
   const floorGeo = new THREE.PlaneGeometry(9, 200);
   const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -100,26 +103,50 @@
   floor.receiveShadow = true;
   corridorGroup.add(floor);
 
-  // Neon lane lines
-  function makeNeonLine(x) {
-    const geo = new THREE.PlaneGeometry(0.06, 200);
+  // Tile grout lines (subtle grid) using thin dark strips along the floor
+  function makeFloorLine(x) {
+    const geo = new THREE.PlaneGeometry(0.03, 200);
     const mat = new THREE.MeshBasicMaterial({
-      color: 0x3ea6ff,
+      color: 0xbdb9ac,
       transparent: true,
-      opacity: 0.85
+      opacity: 0.6
     });
     const m = new THREE.Mesh(geo, mat);
     m.rotation.x = -Math.PI / 2;
     m.position.set(x, 0.02, -80);
     return m;
   }
-  [-3.6, -1.2, 1.2, 3.6].forEach((x) => corridorGroup.add(makeNeonLine(x)));
+  [-3.6, -1.2, 1.2, 3.6].forEach((x) => corridorGroup.add(makeFloorLine(x)));
 
-  // Side walls with locker-like neon panels
+  // Wood strip dividing the corridor lengthwise (like the photo)
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8a5a2e, roughness: 0.7 });
+  const woodStrip = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 200), woodMat);
+  woodStrip.rotation.x = -Math.PI / 2;
+  woodStrip.position.set(0.9, 0.025, -80);
+  corridorGroup.add(woodStrip);
+
+  // Right wall: beige/granite marbled tile with a dark accent band
+  const marbleWallMat = new THREE.MeshStandardMaterial({
+    color: 0xcabfa4,
+    roughness: 0.6,
+    metalness: 0.1
+  });
+  const marbleWall = new THREE.Mesh(new THREE.PlaneGeometry(200, 10), marbleWallMat);
+  marbleWall.position.set(4.6, 5, -80);
+  marbleWall.rotation.y = -Math.PI / 2;
+  scene.add(marbleWall);
+
+  const accentBandMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.5 });
+  const accentBand = new THREE.Mesh(new THREE.PlaneGeometry(200, 0.6), accentBandMat);
+  accentBand.position.set(4.58, 7.6, -80);
+  accentBand.rotation.y = -Math.PI / 2;
+  scene.add(accentBand);
+
+  // Left wall: plain white wall with recessed window panels
   const wallMat = new THREE.MeshStandardMaterial({
-    color: 0x0c0e18,
-    roughness: 0.8,
-    metalness: 0.2
+    color: 0xf3f2ee,
+    roughness: 0.85,
+    metalness: 0.02
   });
   function makeWall(x, rotY) {
     const geo = new THREE.PlaneGeometry(200, 10);
@@ -130,35 +157,43 @@
     return wall;
   }
   makeWall(-4.6, Math.PI / 2);
-  makeWall(4.6, -Math.PI / 2);
 
-  // Locker glow strips
-  const lockerStripGroup = new THREE.Group();
-  scene.add(lockerStripGroup);
-  function spawnLockerStrip(z) {
-    [-4.55, 4.55].forEach((x) => {
-      const geo = new THREE.PlaneGeometry(0.15, 8);
-      const mat = new THREE.MeshBasicMaterial({
-        color: Math.random() > 0.5 ? 0x00e5ff : 0x3ea6ff,
-        transparent: true,
-        opacity: 0.5
-      });
-      const strip = new THREE.Mesh(geo, mat);
-      strip.position.set(x, 4, z);
-      strip.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
-      strip.userData.isStrip = true;
-      lockerStripGroup.add(strip);
-    });
+  // Window panels on the left wall
+  const windowMat = new THREE.MeshStandardMaterial({
+    color: 0x9fd4ff,
+    emissive: 0xbfe6ff,
+    emissiveIntensity: 0.35,
+    roughness: 0.3
+  });
+  const windowGroup = new THREE.Group();
+  scene.add(windowGroup);
+  function spawnWindow(z) {
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.6), windowMat);
+    win.position.set(-4.55, 5.4, z);
+    win.rotation.y = Math.PI / 2;
+    win.userData.isWindow = true;
+    windowGroup.add(win);
   }
-  for (let z = -10; z > SPAWN_Z * 2; z -= 8) spawnLockerStrip(z);
+  for (let z = -10; z > SPAWN_Z * 2; z -= 6) spawnWindow(z);
 
-  // Ceiling
+  // Ceiling: white ceramic tile grid
   const ceilGeo = new THREE.PlaneGeometry(9, 200);
-  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x05060c, roughness: 1 });
+  const ceilMat = new THREE.MeshStandardMaterial({ color: 0xf5f4f0, roughness: 0.9 });
   const ceiling = new THREE.Mesh(ceilGeo, ceilMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, 9.5, -80);
   scene.add(ceiling);
+
+  // Fluorescent tube light fixtures along the ceiling
+  const tubeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const tubeGroup = new THREE.Group();
+  scene.add(tubeGroup);
+  function spawnTube(z) {
+    const tube = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 3.2), tubeMat);
+    tube.position.set(0, 9.35, z);
+    tubeGroup.add(tube);
+  }
+  for (let z = -10; z > SPAWN_Z * 2; z -= 9) spawnTube(z);
 
   // ---------- Professor character (low-poly stylized) ----------
   function buildProfessor() {
@@ -250,7 +285,7 @@
   scene.add(professor);
 
   // ---------- Student obstacle (stylized, looking at phone) ----------
-  const studentColors = [0xff5c7a, 0x8b5cf6, 0xffa93e, 0x22c55e, 0xf472b6, 0x60a5fa];
+  const studentColors = [0x5b6478, 0x8a6a4e, 0xd6d1c4, 0x3a5a78, 0x6b4a3a, 0x4a5240];
 
   function buildStudent() {
     const g = new THREE.Group();
@@ -624,7 +659,11 @@
       c.mesh.rotation.y += delta * 6;
       c.mesh.position.y = 1.1 + Math.sin(elapsed * 4 + c.mesh.position.x) * 0.08;
     });
-    lockerStripGroup.children.forEach((s) => {
+    windowGroup.children.forEach((s) => {
+      s.position.z += move;
+      if (s.position.z > 10) s.position.z -= (Math.abs(SPAWN_Z) * 2 + 20);
+    });
+    tubeGroup.children.forEach((s) => {
       s.position.z += move;
       if (s.position.z > 10) s.position.z -= (Math.abs(SPAWN_Z) * 2 + 20);
     });
