@@ -51,6 +51,139 @@
   scene.fog = new THREE.FogExp2(0xe4e0d4, 0.022);
   scene.background = new THREE.Color(0xe4e0d4);
 
+  // ---------- Procedural textures (to mimic the reference photo) ----------
+  function makeTileTexture({
+    base = "#e9e7df",
+    grout = "#b9b4a5",
+    cols = 10,
+    rows = 220,
+    repeatX = 9,
+    repeatY = 200,
+    dirty = false
+  }) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 1024;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (dirty) {
+      for (let i = 0; i < 400; i++) {
+        ctx.fillStyle = `rgba(120,110,90,${Math.random() * 0.06})`;
+        ctx.beginPath();
+        ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 12 + 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    const cw = canvas.width / cols;
+    const rh = canvas.height / rows;
+    ctx.strokeStyle = grout;
+    ctx.lineWidth = 1.4;
+    for (let c = 0; c <= cols; c++) {
+      ctx.beginPath();
+      ctx.moveTo(c * cw, 0);
+      ctx.lineTo(c * cw, canvas.height);
+      ctx.stroke();
+    }
+    for (let r = 0; r <= rows; r++) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * rh);
+      ctx.lineTo(canvas.width, r * rh);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 1);
+    return tex;
+  }
+
+  function makeMarbleTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 1024;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#cabfa4";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Blotchy granite speckle
+    for (let i = 0; i < 3200; i++) {
+      const shade = Math.random();
+      if (shade < 0.5) {
+        ctx.fillStyle = `rgba(90,75,55,${Math.random() * 0.25})`;
+      } else if (shade < 0.8) {
+        ctx.fillStyle = `rgba(230,220,200,${Math.random() * 0.3})`;
+      } else {
+        ctx.fillStyle = `rgba(60,50,35,${Math.random() * 0.35})`;
+      }
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * canvas.height;
+      const s = Math.random() * 3 + 0.5;
+      ctx.fillRect(x, y, s, s);
+    }
+
+    // Vein-like streaks
+    ctx.strokeStyle = "rgba(80,65,45,0.18)";
+    for (let i = 0; i < 26; i++) {
+      ctx.beginPath();
+      const x0 = Math.random() * canvas.width;
+      let y0 = Math.random() * canvas.height;
+      ctx.moveTo(x0, y0);
+      for (let s = 0; s < 6; s++) {
+        y0 += canvas.height / 6;
+        ctx.lineTo(x0 + (Math.random() - 0.5) * 60, y0);
+      }
+      ctx.lineWidth = Math.random() * 1.5 + 0.4;
+      ctx.stroke();
+    }
+
+    // Tile grid (large granite slabs)
+    const cols = 4;
+    const rows = 24;
+    ctx.strokeStyle = "rgba(40,35,25,0.5)";
+    ctx.lineWidth = 2;
+    for (let c = 0; c <= cols; c++) {
+      ctx.beginPath();
+      ctx.moveTo((c * canvas.width) / cols, 0);
+      ctx.lineTo((c * canvas.width) / cols, canvas.height);
+      ctx.stroke();
+    }
+    for (let r = 0; r <= rows; r++) {
+      ctx.beginPath();
+      ctx.moveTo(0, (r * canvas.height) / rows);
+      ctx.lineTo(canvas.width, (r * canvas.height) / rows);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  const floorTexture = makeTileTexture({
+    base: "#eceae2",
+    grout: "#c3beb0",
+    cols: 9,
+    rows: 220,
+    dirty: true
+  });
+  floorTexture.repeat.set(1, 22);
+
+  const ceilTexture = makeTileTexture({
+    base: "#f6f5f1",
+    grout: "#d8d4c8",
+    cols: 9,
+    rows: 220
+  });
+  ceilTexture.repeat.set(1, 22);
+
+  const marbleTexture = makeMarbleTexture();
+  marbleTexture.repeat.set(1, 22);
+
   const camera = new THREE.PerspectiveCamera(
     62,
     window.innerWidth / window.innerHeight,
@@ -92,7 +225,7 @@
   scene.add(corridorGroup);
 
   const floorMat = new THREE.MeshStandardMaterial({
-    color: 0xe9e7df,
+    map: floorTexture,
     roughness: 0.55,
     metalness: 0.05
   });
@@ -103,20 +236,12 @@
   floor.receiveShadow = true;
   corridorGroup.add(floor);
 
-  // Tile grout lines (subtle grid) using thin dark strips along the floor
-  function makeFloorLine(x) {
-    const geo = new THREE.PlaneGeometry(0.03, 200);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xbdb9ac,
-      transparent: true,
-      opacity: 0.6
-    });
-    const m = new THREE.Mesh(geo, mat);
-    m.rotation.x = -Math.PI / 2;
-    m.position.set(x, 0.02, -80);
-    return m;
-  }
-  [-3.6, -1.2, 1.2, 3.6].forEach((x) => corridorGroup.add(makeFloorLine(x)));
+  // Low step/riser along the left side of the walkway (as in the photo)
+  const riserMat = new THREE.MeshStandardMaterial({ color: 0xd9d6cc, roughness: 0.6 });
+  const riser = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.14, 200), riserMat);
+  riser.position.set(-3.3, 0.07, -80);
+  riser.receiveShadow = true;
+  corridorGroup.add(riser);
 
   // Wood strip dividing the corridor lengthwise (like the photo)
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x8a5a2e, roughness: 0.7 });
@@ -125,26 +250,40 @@
   woodStrip.position.set(0.9, 0.025, -80);
   corridorGroup.add(woodStrip);
 
-  // Right wall: beige/granite marbled tile with a dark accent band
+  // Right wall: beige/granite marbled slab with a dark accent band
   const marbleWallMat = new THREE.MeshStandardMaterial({
-    color: 0xcabfa4,
-    roughness: 0.6,
-    metalness: 0.1
+    map: marbleTexture,
+    roughness: 0.55,
+    metalness: 0.15
   });
   const marbleWall = new THREE.Mesh(new THREE.PlaneGeometry(200, 10), marbleWallMat);
   marbleWall.position.set(4.6, 5, -80);
   marbleWall.rotation.y = -Math.PI / 2;
   scene.add(marbleWall);
 
-  const accentBandMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.5 });
-  const accentBand = new THREE.Mesh(new THREE.PlaneGeometry(200, 0.6), accentBandMat);
-  accentBand.position.set(4.58, 7.6, -80);
+  const accentBandMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.4, metalness: 0.3 });
+  const accentBand = new THREE.Mesh(new THREE.PlaneGeometry(200, 0.55), accentBandMat);
+  accentBand.position.set(4.58, 7.55, -80);
   accentBand.rotation.y = -Math.PI / 2;
   scene.add(accentBand);
 
+  // Small wall outlet / plate details on the marble wall (like the photo)
+  const outletGroup = new THREE.Group();
+  scene.add(outletGroup);
+  function spawnOutlet(z) {
+    const plate = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.22, 0.32),
+      new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.4 })
+    );
+    plate.position.set(4.55, 1.3, z);
+    plate.rotation.y = -Math.PI / 2;
+    outletGroup.add(plate);
+  }
+  for (let z = -14; z > SPAWN_Z * 2; z -= 11) spawnOutlet(z);
+
   // Left wall: plain white wall with recessed window panels
   const wallMat = new THREE.MeshStandardMaterial({
-    color: 0xf3f2ee,
+    color: 0xf5f4f0,
     roughness: 0.85,
     metalness: 0.02
   });
@@ -158,31 +297,43 @@
   }
   makeWall(-4.6, Math.PI / 2);
 
-  // Window panels on the left wall
+  // Window panels on the left wall (dark reflective glass with a soft highlight)
   const windowMat = new THREE.MeshStandardMaterial({
-    color: 0x9fd4ff,
-    emissive: 0xbfe6ff,
-    emissiveIntensity: 0.35,
-    roughness: 0.3
+    color: 0x2a3138,
+    emissive: 0x3b4550,
+    emissiveIntensity: 0.4,
+    roughness: 0.25,
+    metalness: 0.4
   });
+  const windowFrameMat = new THREE.MeshStandardMaterial({ color: 0xdedad0, roughness: 0.6 });
   const windowGroup = new THREE.Group();
   scene.add(windowGroup);
-  function spawnWindow(z) {
-    const win = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.6), windowMat);
-    win.position.set(-4.55, 5.4, z);
+  function spawnWindow(z, small) {
+    const w = small ? 0.5 : 0.9;
+    const h = small ? 0.9 : 1.7;
+    const frame = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.08, h + 0.08), windowFrameMat);
+    frame.position.set(-4.56, small ? 6.6 : 5.3, z);
+    frame.rotation.y = Math.PI / 2;
+    windowGroup.add(frame);
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(w, h), windowMat);
+    win.position.set(-4.54, small ? 6.6 : 5.3, z);
     win.rotation.y = Math.PI / 2;
-    win.userData.isWindow = true;
     windowGroup.add(win);
   }
-  for (let z = -10; z > SPAWN_Z * 2; z -= 6) spawnWindow(z);
+  for (let z = -10; z > SPAWN_Z * 2; z -= 6) spawnWindow(z, Math.random() < 0.35);
 
-  // Ceiling: white ceramic tile grid
+  // Ceiling: white ceramic tile grid with a recessed duct band (matches photo)
   const ceilGeo = new THREE.PlaneGeometry(9, 200);
-  const ceilMat = new THREE.MeshStandardMaterial({ color: 0xf5f4f0, roughness: 0.9 });
+  const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTexture, roughness: 0.9 });
   const ceiling = new THREE.Mesh(ceilGeo, ceilMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, 9.5, -80);
   scene.add(ceiling);
+
+  const ductMat = new THREE.MeshStandardMaterial({ color: 0xe7e4da, roughness: 0.8 });
+  const duct = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, 200), ductMat);
+  duct.position.set(2.6, 9.2, -80);
+  scene.add(duct);
 
   // Fluorescent tube light fixtures along the ceiling
   const tubeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -346,25 +497,94 @@
     return g;
   }
 
-  // ---------- Coin (collectible, optional score boost) ----------
-  function buildCoin() {
-    const geo = new THREE.TorusGeometry(0.22, 0.08, 10, 16);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0xffd54a,
-      emissive: 0xffb700,
-      emissiveIntensity: 0.6,
-      metalness: 0.8,
-      roughness: 0.3
+  // ---------- Dragãozinho (collectible, gives bonus points) ----------
+  function buildDragon() {
+    const g = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0x2ec96b,
+      emissive: 0x0f8a44,
+      emissiveIntensity: 0.35,
+      roughness: 0.4,
+      metalness: 0.2
     });
-    const coin = new THREE.Mesh(geo, mat);
-    coin.rotation.x = Math.PI / 2;
-    coin.userData.spin = 0;
-    return coin;
+    const bellyMat = new THREE.MeshStandardMaterial({ color: 0xd9f5a3, roughness: 0.5 });
+    const wingMat = new THREE.MeshStandardMaterial({
+      color: 0x58e08a,
+      emissive: 0x1fae5a,
+      emissiveIntensity: 0.5,
+      transparent: true,
+      opacity: 0.92,
+      side: THREE.DoubleSide
+    });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), bodyMat);
+    body.scale.set(1, 0.85, 1.3);
+    g.add(body);
+
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), bellyMat);
+    belly.position.set(0, -0.05, 0.02);
+    belly.scale.set(0.9, 0.7, 1.1);
+    g.add(belly);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), bodyMat);
+    head.position.set(0, 0.08, 0.22);
+    g.add(head);
+
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.12, 8), bodyMat);
+    snout.rotation.x = Math.PI / 2;
+    snout.position.set(0, 0.06, 0.34);
+    g.add(snout);
+
+    const hornGeo = new THREE.ConeGeometry(0.02, 0.07, 6);
+    const hornL = new THREE.Mesh(hornGeo, bodyMat);
+    hornL.position.set(-0.05, 0.17, 0.18);
+    hornL.rotation.z = -0.3;
+    const hornR = hornL.clone();
+    hornR.position.x = 0.05;
+    hornR.rotation.z = 0.3;
+    g.add(hornL, hornR);
+
+    // eyes
+    const eyeGeo = new THREE.SphereGeometry(0.018, 6, 6);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(-0.05, 0.1, 0.3);
+    const eyeR = eyeL.clone();
+    eyeR.position.x = 0.05;
+    g.add(eyeL, eyeR);
+
+    // wings (flat triangles), animated in the tick loop
+    function makeWing(sign) {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.lineTo(sign * 0.32, 0.12);
+      shape.lineTo(sign * 0.26, -0.05);
+      shape.lineTo(sign * 0.14, -0.14);
+      shape.lineTo(0, -0.02);
+      const geo = new THREE.ShapeGeometry(shape);
+      const wing = new THREE.Mesh(geo, wingMat);
+      wing.position.set(sign * 0.08, 0.05, -0.02);
+      return wing;
+    }
+    const wingL = makeWing(-1);
+    const wingR = makeWing(1);
+    g.add(wingL, wingR);
+
+    // tail
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.34, 8), bodyMat);
+    tail.rotation.x = -Math.PI / 2;
+    tail.position.set(0, -0.02, -0.32);
+    g.add(tail);
+
+    g.userData.wings = { wingL, wingR };
+    g.userData.flap = Math.random() * Math.PI * 2;
+    g.scale.setScalar(1.35);
+    return g;
   }
 
   // ---------- Object pools ----------
   const obstacles = []; // {mesh, lane}
-  const coins = []; // {mesh, lane}
+  const coins = []; // {mesh, lane} -- small dragons, kept name for internal simplicity
 
   function spawnObstacleRow() {
     // choose how many lanes blocked (never all 3, to keep it winnable)
@@ -380,14 +600,14 @@
       obstacles.push({ mesh: student, lane, passed: false });
     });
 
-    // spawn a coin in a free lane sometimes
+    // spawn a small flying dragon in a free lane sometimes
     const freeLanes = [0, 1, 2].filter((l) => !blocked.includes(l));
     if (freeLanes.length && Math.random() < 0.55) {
       const lane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
-      const coin = buildCoin();
-      coin.position.set(LANE_X[lane], 1.1, SPAWN_Z - 2);
-      scene.add(coin);
-      coins.push({ mesh: coin, lane });
+      const dragon = buildDragon();
+      dragon.position.set(LANE_X[lane], 1.1, SPAWN_Z - 2);
+      scene.add(dragon);
+      coins.push({ mesh: dragon, lane });
     }
   }
 
@@ -399,13 +619,17 @@
   let velY = 0;
   let isJumping = false;
   let speed = START_SPEED;
-  let distance = 0;
-  let best = Number(localStorage.getItem("professorGameBest") || 0);
+  let distance = 0; // internal metres travelled, drives difficulty ramp
+  let score = 0; // points shown to the player
+  let dragonsCollected = 0;
+  const POINTS_PER_METER = 1;
+  const POINTS_PER_DRAGON = 50;
+  let best = Number(localStorage.getItem("professorGameBestScore") || 0);
   let spawnTimer = 0;
   let elapsed = 0;
   let runId = 0;
 
-  bestEl.textContent = `Recorde: ${Math.floor(best)} m`;
+  bestEl.textContent = `Recorde: ${Math.floor(best)} pts`;
 
   function resetGame() {
     // clear obstacles/coins
@@ -421,6 +645,8 @@
     isJumping = false;
     speed = START_SPEED;
     distance = 0;
+    score = 0;
+    dragonsCollected = 0;
     spawnTimer = 0;
     elapsed = 0;
     gameOver = false;
@@ -438,13 +664,13 @@
   function endGame() {
     running = false;
     gameOver = true;
-    if (distance > best) {
-      best = distance;
-      localStorage.setItem("professorGameBest", String(Math.floor(best)));
+    if (score > best) {
+      best = score;
+      localStorage.setItem("professorGameBestScore", String(Math.floor(best)));
     }
-    goScoreEl.textContent = `Você percorreu ${Math.floor(distance)} metros pelo corredor.`;
+    goScoreEl.textContent = `Você fez ${Math.floor(score)} pontos (${dragonsCollected} dragõezinhos coletados).`;
     goMsgEl.textContent = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-    bestEl.textContent = `Recorde: ${Math.floor(best)} m`;
+    bestEl.textContent = `Recorde: ${Math.floor(best)} pts`;
     centerMsg.style.display = "flex";
     startScreen.style.display = "none";
     gameoverBox.style.display = "flex";
@@ -609,7 +835,8 @@
       if (dz < 0.6 && dx < 0.5) {
         scene.remove(c.mesh);
         coins.splice(i, 1);
-        distance += 5;
+        dragonsCollected++;
+        score += POINTS_PER_DRAGON;
         beep(880, 0.12, "triangle", 0.12);
       }
     }
@@ -630,6 +857,7 @@
     elapsed += delta;
     speed = Math.min(MAX_SPEED, START_SPEED + elapsed * SPEED_RAMP * 10);
     distance += speed * delta * 0.6;
+    score += speed * delta * 0.6 * POINTS_PER_METER;
 
     // lane movement (smooth lerp)
     professor.position.x += (targetX - professor.position.x) * Math.min(1, LANE_CHANGE_SPEED * delta);
@@ -656,8 +884,12 @@
     });
     coins.forEach((c) => {
       c.mesh.position.z += move;
-      c.mesh.rotation.y += delta * 6;
-      c.mesh.position.y = 1.1 + Math.sin(elapsed * 4 + c.mesh.position.x) * 0.08;
+      c.mesh.rotation.y += delta * 2.2;
+      c.mesh.position.y = 1.1 + Math.sin(elapsed * 4 + c.mesh.position.x) * 0.18;
+      const flap = Math.sin((elapsed + c.mesh.userData.flap) * 14);
+      const { wingL, wingR } = c.mesh.userData.wings;
+      wingL.rotation.y = flap * 0.9;
+      wingR.rotation.y = -flap * 0.9;
     });
     windowGroup.children.forEach((s) => {
       s.position.z += move;
@@ -701,7 +933,7 @@
     camera.lookAt(professor.position.x * 0.6, 1.6, professor.position.z - 6);
 
     // HUD
-    scoreEl.textContent = `${Math.floor(distance)} m`;
+    scoreEl.textContent = `${Math.floor(score)} pts`;
     speedEl.textContent = `Velocidade: ${(speed / START_SPEED).toFixed(1)}x`;
 
     renderer.render(scene, camera);
